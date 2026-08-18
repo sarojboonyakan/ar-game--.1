@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเช็กการส่งงาน AR - ม.1</title>
+    <!-- PapaParse สำหรับอ่านไฟล์ CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; }
+        body { background: #f4f6f9; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 20px; color: #1a237e; }
+        
+        /* Control Panel */
+        .controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
+        select { padding: 10px 15px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; outline: none; }
+        
+        /* Dashboard Stats */
+        .stats { display: flex; gap: 15px; margin-bottom: 20px; }
+        .stat-card { flex: 1; background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .stat-card.green h2 { color: #4CAF50; font-size: 32px; }
+        .stat-card.blue h2 { color: #2196F3; font-size: 32px; }
+
+        /* Student Grid */
+        .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+        .card { background: white; padding: 15px; border-radius: 10px; border-left: 6px solid #4CAF50; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+        .card h3 { font-size: 18px; margin-bottom: 5px; }
+        .card p { font-size: 14px; color: #666; margin-bottom: 10px; }
+        .card a { display: inline-block; background: #2196F3; color: white; padding: 6px 12px; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📋 ระบบเช็กการส่งงาน AR (ม.1)</h1>
+
+    <div class="controls">
+        <div>
+            <label for="room-select"><b>เลือกห้องเรียน: </b></label>
+            <select id="room-select" onchange="filterData()">
+                <option value="ALL">-- แสดงทุกห้อง --</option>
+                <option value="ม.1/1">ม.1/1</option>
+                <option value="ม.1/2">ม.1/2</option>
+                <option value="ม.1/3">ม.1/3</option>
+                <option value="ม.1/4">ม.1/4</option>
+                <option value="ม.1/5">ม.1/5</option>
+                <option value="ม.1/6">ม.1/6</option>
+                <option value="ม.1/7">ม.1/7</option>
+                <option value="ม.1/8">ม.1/8</option>
+                <option value="ม.1/9">ม.1/9</option>
+            </select>
+        </div>
+        <button onclick="loadData()" style="padding: 10px 20px; background: #FF9800; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">🔄 รีเฟรชข้อมูล</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card blue">
+            <p>ส่งงานแล้วทั้งหมด</p>
+            <h2 id="total-sent">0</h2>
+        </div>
+        <div class="stat-card green">
+            <p>จำนวนในห้องนี้</p>
+            <h2 id="room-sent">0</h2>
+        </div>
+    </div>
+
+    <div class="student-grid" id="grid">
+        <p style="grid-column: 1/-1; text-align: center; color: #888;">กำลังโหลดข้อมูล...</p>
+    </div>
+</div>
+
+<script>
+    // ลิงก์ CSV จาก Google Sheets ของคุณครู
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSshmx0ExcSUjiTlh6saBXfHVHxrNc2mjgCc-3LiXFI7f0xEUSJucz1jqckySudAnojSrcb4ct7nE6V/pub?gid=1899741887&single=true&output=csv";
+
+    let rawData = [];
+
+    function loadData() {
+        document.getElementById('grid').innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #888;">กำลังอัปเดตข้อมูลล่าสุด...</p>';
+        
+        Papa.parse(SHEET_CSV_URL, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                rawData = results.data;
+                document.getElementById('total-sent').innerText = rawData.length + " คน";
+                filterData();
+            },
+            error: function() {
+                document.getElementById('grid').innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: red;">ไม่สามารถโหลดข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่อ</p>';
+            }
+        });
+    }
+
+    function filterData() {
+        const selectedRoom = document.getElementById('room-select').value;
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+
+        const filtered = rawData.filter(row => {
+            const roomValue = row['เลือกห้องเรียน'] || row['ห้อง'] || row['ห้องเรียน'] || '';
+            return selectedRoom === 'ALL' || roomValue.includes(selectedRoom);
+        });
+
+        document.getElementById('room-sent').innerText = filtered.length + " คน";
+
+        if(filtered.length === 0) {
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #888;">ยังไม่มีนักเรียนส่งงานในหมวดนี้</p>';
+            return;
+        }
+
+        filtered.forEach(item => {
+            const name = item['พิมพ์ ชื่อ-นามสกุล'] || item['ชื่อ-นามสกุล'] || item['ชื่อ'] || 'ไม่ระบุชื่อ';
+            const no = item['เลขที่'] || '-';
+            const room = item['เลือกห้องเรียน'] || item['ห้อง'] || item['ห้องเรียน'] || '-';
+            const imgUrl = item['อัปโหลดรูปภาพ'] || item['รูปภาพ'] || item['ส่งรูปภาพ'] || '#';
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <h3>${name}</h3>
+                <p>เลขที่: <b>${no}</b> | ห้อง: <b>${room}</b></p>
+                ${imgUrl !== '#' ? `<a href="${imgUrl}" target="_blank">🖼️ เปิดดูรูปภาพหลักฐาน</a>` : '<span style="color:#aaa;">ไม่มีรูปแนบ</span>'}
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    loadData();
+</script>
+
+</body>
+</html>
