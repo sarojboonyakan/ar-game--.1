@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Life Sorting 3 Boxes - WebAR Game</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Kanit', sans-serif; background: #000; }
+        
+        /* Camera Feed */
+        #webcam { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        
+        /* Header UI */
+        .header { position: absolute; top: 15px; left: 10px; right: 10px; display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #fff; z-index: 5; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        .badge { background: rgba(0,0,0,0.65); padding: 8px 14px; border-radius: 20px; border: 2px solid #fff; }
+
+        /* Target Goal Floating Banner */
+        .goal-banner { background: #FF9800; color: #fff; padding: 6px 12px; border-radius: 15px; font-size: 13px; font-weight: bold; }
+
+        /* Drag Items */
+        .draggable {
+            position: absolute;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; font-size: 13px; font-weight: bold; padding: 6px;
+            color: white; z-index: 4;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.5);
+            background: radial-gradient(circle, #42A5F5, #1565C0);
+            border: 3px solid #90CAF9;
+            cursor: grab;
+        }
+
+        /* 3 Drop Zones (Boxes) */
+        .box-container {
+            position: absolute; bottom: 15px; left: 6px; right: 6px;
+            display: flex; justify-content: space-between; gap: 6px; z-index: 3;
+        }
+        .target-box {
+            flex: 1; height: 105px; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; font-weight: bold; font-size: 12px; text-align: center;
+            border: 2px dashed rgba(255,255,255,0.8);
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            padding: 2px;
+        }
+        #box-wellness { background: rgba(46, 125, 50, 0.8); border-color: #81C784; }
+        #box-study { background: rgba(2, 119, 189, 0.8); border-color: #81D4FA; }
+        #box-bad { background: rgba(198, 40, 40, 0.8); border-color: #EF9A9A; }
+        .target-box span { font-size: 22px; margin-bottom: 2px; }
+
+        /* Screens */
+        .modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.88); z-index: 10;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; padding: 20px; text-align: center; touch-action: auto;
+        }
+        input, select { width: 85%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 16px; }
+        button { background: #FF9800; color: white; border: none; padding: 14px 28px; font-size: 18px; font-weight: bold; border-radius: 25px; margin-top: 15px; cursor: pointer; }
+        
+        .win-pass { background: #4CAF50; color: #fff; padding: 10px 15px; border-radius: 10px; font-size: 18px; font-weight: bold; margin: 10px 0; animation: pulse 1s infinite alternate; }
+        @keyframes pulse { 0% { transform: scale(0.95); } 100% { transform: scale(1.05); } }
+    </style>
+</head>
+<body>
+
+    <video id="webcam" autoplay playsinline></video>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="modal">
+        <h2>🎯 เกมแยกแยะชีวิต AR</h2>
+        <p style="margin: 10px 0 10px; color: #ddd; font-size: 14px;">
+            ลากข้อความลง <b>3 กล่องด้านล่าง</b> ให้ถูกต้อง!<br>
+            🏆 <b>ภารกิจ:</b> ใครทำได้ <b>200 คะแนนขึ้นไป</b> เอามาโชว์ครูได้เลย!
+        </p>
+        <input type="text" id="p-name" placeholder="พิมพ์ ชื่อ-นามสกุล">
+        <input type="number" id="p-no" placeholder="เลขที่">
+        <select id="p-room">
+            <option value="">-- เลือกห้องเรียน --</option>
+            <option value="ม.1/1">ม.1/1</option>
+            <option value="ม.1/2">ม.1/2</option>
+            <option value="ม.1/3">ม.1/3</option>
+            <option value="ม.1/4">ม.1/4</option>
+            <option value="ม.1/5">ม.1/5</option>
+            <option value="ม.1/6">ม.1/6</option>
+            <option value="ม.1/7">ม.1/7</option>
+            <option value="ม.1/8">ม.1/8</option>
+            <option value="ม.1/9">ม.1/9</option>
+        </select>
+        <button onclick="startGame()">เริ่มทำภารกิจ!</button>
+    </div>
+
+    <!-- Header UI -->
+    <div class="header">
+        <div class="badge">เวลา: <span id="timer">50</span>s</div>
+        <div class="goal-banner">เป้าหมาย: 200 คะแนน</div>
+        <div class="badge">คะแนน: <span id="score">0</span></div>
+    </div>
+
+    <!-- 3 Drop Boxes -->
+    <div class="box-container">
+        <div id="box-wellness" class="target-box">
+            <span>💚</span>
+            กาย & ใจดี
+        </div>
+        <div id="box-study" class="target-box">
+            <span>📚</span>
+            การเรียน & หน้าที่
+        </div>
+        <div id="box-bad" class="target-box">
+            <span>🗑️</span>
+            ขยะอารมณ์
+        </div>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="modal" style="display: none;">
+        <h2>🎉 จบเกมแล้ว!</h2>
+        <h3 id="res-student" style="color: #FFD54F; margin-top: 8px;"></h3>
+        <p style="font-size: 26px; font-weight: bold; margin: 10px 0;">คะแนนรวม: <span id="res-score" style="color:#FF9800;">0</span></p>
+        
+        <div id="pass-status"></div>
+
+        <button onclick="location.reload()">เล่นใหม่อีกครั้ง</button>
+    </div>
+
+    <script>
+        const wellnessItems = ["นอนพักผ่อน", "ออกกำลัง", "ฟังเพลง", "ยิ้มให้ตัวเอง", "กินของอร่อย", "ดื่มน้ำเยอะๆ"];
+        const studyItems = ["ทำการบ้าน", "อ่านหนังสือ", "ตั้งใจเรียน", "ช่วยงานบ้าน", "จัดตารางเรียน", "ตรงต่อเวลา"];
+        const badItems = ["คิดมาก", "นอนดึก", "หัวร้อน", "ดื้อ", "ติดจอเกินไป", "ผัดวันประกันพุ่ง", "เปรียบเทียบคนอื่น"];
+
+        let score = 0, timeLeft = 50, gameInterval, spawnInterval;
+        const webcam = document.getElementById('webcam');
+
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+                webcam.srcObject = stream;
+            } catch (err) {
+                alert("กรุณากด 'อนุญาต' ให้เข้าถึงกล้อง เพื่อเล่นเกม");
+            }
+        }
+        initCamera();
+
+        function startGame() {
+            const name = document.getElementById('p-name').value.trim();
+            const no = document.getElementById('p-no').value.trim();
+            const room = document.getElementById('p-room').value;
+
+            if(!name || !no || !room) {
+                alert("กรุณากรอกชื่อ เลขที่ และเลือกห้องเรียนให้ครบถ้วนครับ");
+                return;
+            }
+
+            document.getElementById('start-screen').style.display = 'none';
+
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = timeLeft;
+                if(timeLeft <= 0) endGame(name, no, room);
+            }, 1000);
+
+            spawnInterval = setInterval(spawnDraggable, 1100);
+            spawnDraggable();
+        }
+
+        function spawnDraggable() {
+            if(timeLeft <= 0) return;
+            
+            const rand = Math.random();
+            let text = "", type = "";
+            
+            if (rand < 0.35) {
+                text = wellnessItems[Math.floor(Math.random()*wellnessItems.length)];
+                type = "wellness";
+            } else if (rand < 0.70) {
+                text = studyItems[Math.floor(Math.random()*studyItems.length)];
+                type = "study";
+            } else {
+                text = badItems[Math.floor(Math.random()*badItems.length)];
+                type = "bad";
+            }
+            
+            const el = document.createElement('div');
+            el.className = 'draggable';
+            el.innerText = text;
+            el.dataset.type = type;
+            
+            const startX = Math.random() * (window.innerWidth - 100) + 5;
+            const startY = Math.random() * (window.innerHeight * 0.25) + 75;
+            el.style.left = `${startX}px`;
+            el.style.top = `${startY}px`;
+
+            makeDraggable(el);
+            document.body.appendChild(el);
+        }
+
+        function makeDraggable(el) {
+            let active = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
+
+            el.addEventListener('touchstart', dragStart, false);
+            el.addEventListener('touchend', dragEnd, false);
+            el.addEventListener('touchmove', drag, false);
+
+            function dragStart(e) {
+                initialX = e.touches[0].clientX - xOffset;
+                initialY = e.touches[0].clientY - yOffset;
+                if (e.target === el) active = true;
+            }
+
+            function drag(e) {
+                if (active) {
+                    e.preventDefault();
+                    currentX = e.touches[0].clientX - initialX;
+                    currentY = e.touches[0].clientY - initialY;
+                    xOffset = currentX;
+                    yOffset = currentY;
+                    el.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                }
+            }
+
+            function dragEnd(e) {
+                initialX = currentX; initialY = currentY; active = false;
+                const touch = e.changedTouches[0];
+                checkDrop(el, touch.clientX, touch.clientY);
+            }
+        }
+
+        function checkDrop(el, touchX, touchY) {
+            const boxWellness = document.getElementById('box-wellness').getBoundingClientRect();
+            const boxStudy = document.getElementById('box-study').getBoundingClientRect();
+            const boxBad = document.getElementById('box-bad').getBoundingClientRect();
+            const itemType = el.dataset.type;
+
+            let inWellness = (touchX >= boxWellness.left && touchX <= boxWellness.right && touchY >= boxWellness.top && touchY <= boxWellness.bottom);
+            let inStudy = (touchX >= boxStudy.left && touchX <= boxStudy.right && touchY >= boxStudy.top && touchY <= boxStudy.bottom);
+            let inBad = (touchX >= boxBad.left && touchX <= boxBad.right && touchY >= boxBad.top && touchY <= boxBad.bottom);
+
+            if (inWellness) {
+                score += (itemType === 'wellness') ? 10 : -5;
+                el.remove();
+            } else if (inStudy) {
+                score += (itemType === 'study') ? 10 : -5;
+                el.remove();
+            } else if (inBad) {
+                score += (itemType === 'bad') ? 10 : -5;
+                el.remove();
+            }
+            
+            document.getElementById('score').innerText = score;
+        }
+
+        function endGame(name, no, room) {
+            clearInterval(gameInterval);
+            clearInterval(spawnInterval);
+            document.querySelectorAll('.draggable').forEach(b => b.remove());
+
+            document.getElementById('res-student').innerText = `${name} เลขที่ ${no} (${room})`;
+            document.getElementById('res-score').innerText = score;
+            
+            const passStatus = document.getElementById('pass-status');
+            if (score >= 200) {
+                passStatus.innerHTML = `
+                    <div class="win-pass">🌟 ผ่านเกณฑ์ 200 คะแนน! 🌟</div>
+                    <p style="color: #81C784; font-size: 16px; margin-bottom: 15px;">**นำหน้าจอนี้ไปโชว์ครูได้เลยครับ!**</p>
+                `;
+            } else {
+                passStatus.innerHTML = `
+                    <p style="color: #FFB74D; font-size: 15px; margin-bottom: 15px;">เกือบถึง 200 แล้ว! (ขาดอีก ${200 - score} คะแนน)<br>ลองเล่นใหม่อีกรอบได้เลย</p>
+                `;
+            }
+
+            document.getElementById('end-screen').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
