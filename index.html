@@ -73,7 +73,7 @@
         <h2>🎯 เกมแยกแยะชีวิต AR</h2>
         <p style="margin: 10px 0 10px; color: #ddd; font-size: 14px;">
             ลากข้อความลง <b>3 กล่องด้านล่าง</b> ให้ถูกต้อง!<br>
-            🏆 <b>ภารกิจ:</b> ใครทำได้ <b>200 คะแนนขึ้นไป</b> เอามาโชว์ครูได้เลย!
+            🏆 <b>ภารกิจ:</b> ใครทำได้ <b>240 คะแนนขึ้นไป</b> เอามาโชว์ครูได้เลย!
         </p>
         <input type="text" id="p-name" placeholder="พิมพ์ ชื่อ-นามสกุล">
         <input type="number" id="p-no" placeholder="เลขที่">
@@ -95,7 +95,7 @@
     <!-- Header UI -->
     <div class="header">
         <div class="badge">เวลา: <span id="timer">50</span>s</div>
-        <div class="goal-banner">เป้าหมาย: 200 คะแนน</div>
+        <div class="goal-banner">เป้าหมาย: 240 คะแนน</div>
         <div class="badge">คะแนน: <span id="score">0</span></div>
     </div>
 
@@ -261,14 +261,14 @@
             document.getElementById('res-score').innerText = score;
             
             const passStatus = document.getElementById('pass-status');
-            if (score >= 200) {
+            if (score >= 240) {
                 passStatus.innerHTML = `
-                    <div class="win-pass">🌟 ผ่านเกณฑ์ 200 คะแนน! 🌟</div>
+                    <div class="win-pass">🌟 ผ่านเกณฑ์ 240 คะแนน! 🌟</div>
                     <p style="color: #81C784; font-size: 16px; margin-bottom: 15px;">**นำหน้าจอนี้ไปโชว์ครูได้เลยครับ!**</p>
                 `;
             } else {
                 passStatus.innerHTML = `
-                    <p style="color: #FFB74D; font-size: 15px; margin-bottom: 15px;">เกือบถึง 200 แล้ว! (ขาดอีก ${200 - score} คะแนน)<br>ลองเล่นใหม่อีกรอบได้เลย</p>
+                    <p style="color: #FFB74D; font-size: 15px; margin-bottom: 15px;">เกือบถึง 240 แล้ว! (ขาดอีก ${240 - score} คะแนน)<br>ลองเล่นใหม่อีกรอบได้เลย</p>
                 `;
             }
 
